@@ -1,0 +1,49 @@
+services:
+  tife-prometheus:
+    image: prom/prometheus
+    container_name: tife-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      
+  tife-tempo:
+    image: grafana/tempo
+    container_name: tife-tempo
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - ./docker/tempo/tempo.yml:/etc/tempo.yaml:ro
+    #  - ./docker/tempo/tempo-data:/tmp/tempo
+    ports:
+      - "3200:3200" # Tempo
+      - "9411:9411" # zipkin
+      
+  tife-loki:
+    image: grafana/loki:main
+    container_name: tife-loki
+    command: [ "-config.file=/etc/loki/local-config.yaml" ]
+    ports:
+      - "3100:3100"   
+      
+  tife-grafana:
+    image: grafana/grafana
+    container_name: tife-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./docker/grafana:/etc/grafana/provisioning/datasources:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=password 
+  
+  tife-service:
+     build : ./
+     container_name : tife_service
+     restart: always
+     depends_on:
+        - tife-tempo
+        - tife-loki
+     ports:
+       - "8080:8080"
